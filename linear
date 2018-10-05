@@ -1,0 +1,64 @@
+from IPython.display import display
+import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+import mglearn
+##################################
+taxi= pd.read_csv("C:/py/taxi_train.csv",nrows=2000000)
+taxi
+taxi.isnull().sum().to_frame()
+taxi = taxi[-(taxi['dropoff_longitude'].isnull()) & -(taxi['dropoff_latitude'].isnull())]
+taxi.isnull().sum().to_frame()
+##################################
+taxi.describe()
+taxi['abs_diff_latitude'] = abs(taxi['pickup_latitude']-taxi['dropoff_latitude'])
+taxi['abs_diff_longitude'] = abs(taxi['pickup_longitude']-taxi['dropoff_longitude'])
+taxi
+#################################
+taxi = taxi.loc[ (taxi["abs_diff_latitude"] <= 5)]
+taxi = taxi.loc[ (taxi["abs_diff_longitude"] <= 5)]
+taxi = taxi.loc[ (taxi["passenger_count"] > 0)]
+taxi = taxi.loc[ (taxi["fare_amount"] > 0)]
+#################################
+X = taxi.iloc[:,8:10]
+X
+Y = taxi.iloc[:,1:2]
+Y
+####################################
+from sklearn.linear_model import LinearRegression
+lr=LinearRegression().fit(X,Y)
+print("lr.coef : {} ".format(lr.coef_))
+print("lr.intercept : {} ".format(lr.intercept_))
+print("점수 : {} ".format(lr.score(X,Y)))
+#####################################
+from sklearn.linear_model import Ridge
+
+ridge = Ridge().fit(X,Y)
+print("점수 : {}".format(ridge.score(X,Y)))
+#######################################
+ridge10 = Ridge(alpha=0.1).fit(X,Y)
+print("점수 : {}".format(ridge10.score(X,Y)))
+######################################
+df_test = pd.read_csv("C:/py/taxi_test.csv")
+df_test
+min(df_test['pickup_longitude'].min(), df_test['dropoff_longitude'].min()), \
+max(df_test['pickup_longitude'].max(), df_test['dropoff_longitude'].max()) # (-74.263242, -72.986532)
+min(df_test.pickup_latitude.min(), df_test.dropoff_latitude.min()), \
+max(df_test.pickup_latitude.max(), df_test.dropoff_latitude.max()) # (40.568973, 41.7095555)
+############################################################################################################
+def select_within_boundingbox(df, BB):
+    # BB[0] : min(df_test.pickup_longitude) / BB[1] : min(df_test.dropoff_longitude)
+    # BB[2] : max(df_test.pickup_longitude) / BB[3] : max(df_test.dropofff_longitude)
+    
+    return (df.pickup_longitude >= BB[0]) & (df.pickup_longitude <= BB[1]) & \
+           (df.pickup_latitude >= BB[2]) & (df.pickup_latitude <= BB[3]) & \
+           (df.dropoff_longitude >= BB[0]) & (df.dropoff_longitude <= BB[1]) & \
+           (df.dropoff_latitude >= BB[2]) & (df.dropoff_latitude <= BB[3])         
+
+BB = (-74.5,-72.8,40.5,41.8)
+
+print("old size : {}".format(len(taxi))) # old size : 1988788
+print()
+#####################################################################
+taxi = taxi[select_within_boundingbox(taxi,BB)] # test set에 들어 있는 pickup 관련 최대,최소 경위도와 dropoff 관련 최대,최소 경위도 안에 있는 경위도를 trainset의 범위로 산정
+print("new size : {}".format(len(taxi))) # new size : 1950922
